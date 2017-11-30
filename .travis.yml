@@ -57,7 +57,6 @@ matrix:
         - SPECIAL=coverity
       before_install: 
         - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
-        - cd ..
         - wget https://www.threadingbuildingblocks.org/sites/default/files/software_releases/linux/tbb2017_20160916oss_lin.tgz && tar -C ${TBB_INSTALL_DIR} -xf tbb2017_20160916oss_lin.tgz && rm tbb2017_20160916oss_lin.tgz
         - sed -i "s%SUBSTITUTE_INSTALL_DIR_HERE%${TBB_INSTALL_DIR}/tbb2017_20160916oss%" ${TBB_INSTALL_DIR}/tbb2017_20160916oss/bin/tbbvars.*
         - echo "source ${TBB_INSTALL_DIR}/tbb2017_20160916oss/bin/tbbvars.sh intel64" >> ~/.bashrc
