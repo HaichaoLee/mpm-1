@@ -71,8 +71,8 @@ matrix:
           packages: ['g++-5', 'libeigen3-dev']
         coverity_scan:
           project:
-            name: "cb-geo/lem"
-            description: "LEM Coverity scan build submitted via Travis CI"
+            name: "cb-geo/mpm"
+            description: "MPM Coverity scan build submitted via Travis CI"
           notification_email: cued.geomechanics@gmail.com
           build_command_prepend: "sudo ln -sf /usr/bin/g++-5 /usr/bin/g++ && export CXX=g++ && g++ --version && cmake . && make clean"
           build_command: "make"
