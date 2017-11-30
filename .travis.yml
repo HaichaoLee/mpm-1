@@ -1,0 +1,95 @@
+#########################
+# project configuration #
+#########################
+
+# C++ project
+language: cpp
+
+dist: trusty
+sudo: required
+
+git:
+  submodules: false
+
+cache:
+  directories:
+  - /opt
+
+###################
+# global settings #
+###################
+
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "gAqob621714RwvTpCQTScQE3hvCpTgUTzuSR9tpTpkS8WAwl+BgmkycEhT5509EuDOqM1++6YHxVmhaYQZo1KnWF7zxi+s5gdXP7pmpzz7gSu6tMTrmzpyIOMSBt3m56tlmlT1dnGeRMB5tBjIhg213uiYo2339US5PHYSArgKS66tlPzS3tNTakwN0wSmB9r6DgH2M9qxdATs7dHlhOW/3kUdU3AL2nXfy3TDmORJh05ZubsgKwxZ3CyEoFSdGk1LP7WeSuGb+tbb0Ogn2yhNXWVIER52E+GtFrqBxdhlQEE+Ac7HTzeXmfm5lTqxhGzy1mYU3fdve0FOXfi/bl+anaYE+7LqTxa8c4+1gBSNJrZ16WXE6O845AYAA17mHpMPnHhzrRvUrzhVJRLKPXXeXMpysELIYjYCOIQxi4j199qsrE3guyMMZDsM3of/d7IdASijlkvDZcaKz7netlzWmfyzZEhvqjOL+OHSm/ocdPt4PrfqQCtJ3VLUiNJtX+TajGwbAoJl9KMHdeK7R9AV4dc8pJG5DYuRjI3RZlHX5mI6+emJMP38DZODAjXjJXv8EJ0eOvP/+14l/o0rZi6dShW28/9ZF6Dpbd7DRQdhjSSfxf0FjJVqWtjrKTAR9hj3cfbYWFEJwkZe8OI83WtuKiv9eZ+XMNEf/5nzOfgI8="
+   - TBB_VERSION: 2017_20160916
+   - TBB_DOWNLOAD_URL: https://www.threadingbuildingblocks.org/sites/default/files/software_releases/linux/tbb${TBB_VERSION}oss_lin.tgz
+   - TBB_INSTALL_DIR: /opt
+   - MKL_VER: l_mkl_11.3.3.210
+
+##################
+# Before install #
+##################
+before_install:
+  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq libeigen3-dev
+  - wget https://www.threadingbuildingblocks.org/sites/default/files/software_releases/linux/tbb2017_20160916oss_lin.tgz && tar -C ${TBB_INSTALL_DIR} -xf tbb2017_20160916oss_lin.tgz && rm tbb2017_20160916oss_lin.tgz
+  - sed -i "s%SUBSTITUTE_INSTALL_DIR_HERE%${TBB_INSTALL_DIR}/tbb2017_20160916oss%" ${TBB_INSTALL_DIR}/tbb2017_20160916oss/bin/tbbvars.*
+  - echo "source ${TBB_INSTALL_DIR}/tbb2017_20160916oss/bin/tbbvars.sh intel64" >> ~/.bashrc
+  - source ${TBB_INSTALL_DIR}/tbb2017_20160916oss/bin/tbbvars.sh intel64
+  - export PATH=${TBB_INSTALL_DIR}/tbb${TBB_VERSION}oss/:$PATH
+  - export LD_LIBRARY_PATH=${TBB_INSTALL_DIR}/tbb${TBB_VERSION}oss/lib/:$LD_LIBRARY_PATH
+
+  
+################
+# build matrix #
+################
+matrix:
+  include:
+    # Coverity scan 
+    - os: linux
+      compiler: gcc-5
+      env:
+        - COMPILER=g++-5
+        - SPECIAL=coverity
+      before_install: 
+        - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+        - cd ..
+        - wget https://www.threadingbuildingblocks.org/sites/default/files/software_releases/linux/tbb2017_20160916oss_lin.tgz && tar -C ${TBB_INSTALL_DIR} -xf tbb2017_20160916oss_lin.tgz && rm tbb2017_20160916oss_lin.tgz
+        - sed -i "s%SUBSTITUTE_INSTALL_DIR_HERE%${TBB_INSTALL_DIR}/tbb2017_20160916oss%" ${TBB_INSTALL_DIR}/tbb2017_20160916oss/bin/tbbvars.*
+        - echo "source ${TBB_INSTALL_DIR}/tbb2017_20160916oss/bin/tbbvars.sh intel64" >> ~/.bashrc
+        - source ${TBB_INSTALL_DIR}/tbb2017_20160916oss/bin/tbbvars.sh intel64
+        - export PATH=${TBB_INSTALL_DIR}/tbb${TBB_VERSION}oss/:$PATH
+        - export LD_LIBRARY_PATH=${TBB_INSTALL_DIR}/tbb${TBB_VERSION}oss/lib/:$LD_LIBRARY_PATH
+      before_script: export CXX=g++-5
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-5', 'libeigen3-dev']
+        coverity_scan:
+          project:
+            name: "cb-geo/lem"
+            description: "LEM Coverity scan build submitted via Travis CI"
+          notification_email: cued.geomechanics@gmail.com
+          build_command_prepend: "sudo ln -sf /usr/bin/g++-5 /usr/bin/g++ && export CXX=g++ && g++ --version && cmake . && make clean"
+          build_command: "make"
+          branch_pattern: coverity_scan
+
+################
+# build script #
+################
+
+script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then make ; fi
+    - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then ctest -VV -S ; fi
+
+notifications:
+  slack:
+    rooms:
+      - cb-geo:0N3fJy823MGsJvcDB91m4p8H#mpm
